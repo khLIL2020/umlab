@@ -10,6 +10,10 @@ it("exports portable SVG with all classes, relationships and escaped user text",
   expect(svg).toContain("&lt;script&gt;&amp;");
   expect(svg).toContain("Library");
   expect(svg).toContain("0..*");
+  expect(svg).toContain('marker-start="url(#uml-diamond)"');
+  expect(svg.lastIndexOf("</rect>")).toBeLessThan(
+    svg.indexOf('marker-start="url(#uml-diamond)"'),
+  );
   expect(svg).not.toContain("<script>");
   expect(svg).not.toContain("foreignObject");
 });

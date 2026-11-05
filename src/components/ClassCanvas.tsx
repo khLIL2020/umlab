@@ -169,7 +169,7 @@ export default function ClassCanvas({
     ClassFlowNode,
     RelEdge
   > | null>(null);
-  const models = useMemo(
+  const models = useMemo<ClassFlowNode[]>(
     () =>
       project.classes.map((c) => ({
         id: c.id,
@@ -187,7 +187,7 @@ export default function ClassCanvas({
     [project, issues, selected, connectKind, connectFrom],
   );
   const lastFocus = useRef(-1);
-  const [nodes, setNodes] = useState(models);
+  const [nodes, setNodes] = useState<ClassFlowNode[]>(models);
   useEffect(() => {
     setNodes((prev) =>
       models.map((m) => {

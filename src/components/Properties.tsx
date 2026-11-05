@@ -150,14 +150,14 @@ export default function Properties({
         <div className="element-heading">
           <span className="eyebrow">
             {c
-              ? "CLASS"
+              ? "Class"
               : r
-                ? "RELATIONSHIP"
+                ? "Relationship"
                 : m
-                  ? "MESSAGE"
+                  ? "Message"
                   : l
-                    ? "LIFELINE"
-                    : "FRAGMENT"}
+                    ? "Lifeline"
+                    : "Fragment"}
           </span>
           <h3>{label}</h3>
         </div>

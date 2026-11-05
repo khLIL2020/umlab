@@ -8,6 +8,7 @@ import {
   EdgeLabelRenderer,
   getSmoothStepPath,
   Position,
+  ConnectionMode,
   type EdgeProps,
   type Edge,
   type ReactFlowInstance,
@@ -15,7 +16,12 @@ import {
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import ClassNode, { type ClassFlowNode } from "./ClassNode";
-import type { Project, Issue, Relationship } from "../validation/types";
+import type {
+  Project,
+  Issue,
+  Relationship,
+  RelationshipKind,
+} from "../validation/types";
 type RelEdge = Edge<{ model: Relationship }, "relationship">;
 function RelationshipEdge(props: EdgeProps<RelEdge>) {
   const r = props.data!.model;
@@ -136,9 +142,12 @@ interface Props {
   selected: string | null;
   focusToken: number;
   readOnly: boolean;
+  connectKind: RelationshipKind | null;
+  connectFrom: string | null;
   select: (id: string | null) => void;
   update: (recipe: (p: Project) => void) => void;
   connect: (c: Connection) => void;
+  onClassPick: (id: string) => void;
 }
 export default function ClassCanvas({
   project,
@@ -146,9 +155,12 @@ export default function ClassCanvas({
   selected,
   focusToken,
   readOnly,
+  connectKind,
+  connectFrom,
   select,
   update,
   connect,
+  onClassPick,
 }: Props) {
   const [instance, setInstance] = useState<ReactFlowInstance<
     ClassFlowNode,
@@ -160,14 +172,16 @@ export default function ClassCanvas({
         id: c.id,
         type: "umlClass" as const,
         position: c.position,
-        selected: c.id === selected,
+        selected: c.id === selected || c.id === connectFrom,
         data: {
           model: c,
           issueCount: issues.filter((i) => i.elementId === c.id).length,
           comments: project.comments.filter((x) => x.elementId === c.id).length,
+          connectReady: !!connectKind,
+          connectFrom: c.id === connectFrom,
         },
       })),
-    [project, issues, selected],
+    [project, issues, selected, connectKind, connectFrom],
   );
   const lastFocus = useRef(-1);
   const [nodes, setNodes] = useState(models);
@@ -212,7 +226,8 @@ export default function ClassCanvas({
         if (e.key === "Enter" || e.key === " ") {
           e.preventDefault();
           e.stopPropagation();
-          select(id);
+          if (connectKind) onClassPick(id);
+          else select(id);
           return;
         }
         const delta: Record<string, [number, number]> = {
@@ -263,10 +278,15 @@ export default function ClassCanvas({
               if (c) c.position = n.position;
             });
         }}
-        onNodeClick={(_, n) => select(n.id)}
+        onNodeClick={(_, n) => {
+          if (connectKind) onClassPick(n.id);
+          else select(n.id);
+        }}
         onEdgeClick={(_, e) => select(e.id)}
         onPaneClick={() => select(null)}
         onConnect={connect}
+        connectionMode={ConnectionMode.Loose}
+        connectOnClick={!readOnly}
         nodesDraggable={!readOnly}
         nodesConnectable={!readOnly}
         edgesReconnectable={false}
@@ -277,6 +297,7 @@ export default function ClassCanvas({
         fitViewOptions={{ padding: 0.2 }}
         minZoom={0.15}
         maxZoom={2}
+        defaultEdgeOptions={{ type: "relationship" }}
       >
         <Background gap={22} size={1} color="#d4d9df" />
         <Controls showInteractive={false} />
@@ -285,14 +306,8 @@ export default function ClassCanvas({
       {!project.classes.length && (
         <div className="empty-canvas">
           <BoxIcon />
-          <h2>Every good design starts with a class.</h2>
-          <p>
-            1. Add a class from the left panel.
-            <br />
-            2. Define its attributes and methods.
-            <br />
-            3. Connect it, then test interactions in a sequence.
-          </p>
+          <h2>No classes yet</h2>
+          <p>Add a class from the left panel to get started.</p>
         </div>
       )}
     </div>

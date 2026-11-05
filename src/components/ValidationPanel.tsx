@@ -3,8 +3,7 @@ import {
   AlertTriangle,
   ArrowUpRight,
   CheckCircle2,
-  ShieldCheck,
-  Sparkles,
+  PanelRightClose,
 } from "lucide-react";
 import type { Issue } from "../validation/types";
 interface Props {
@@ -12,57 +11,47 @@ interface Props {
   readOnly: boolean;
   navigate: (i: Issue) => void;
   fix: (i: Issue) => void;
+  onClose?: () => void;
 }
 export default function ValidationPanel({
   issues,
   readOnly,
   navigate,
   fix,
+  onClose,
 }: Props) {
   const errors = issues.filter((i) => i.severity === "error"),
     warnings = issues.filter((i) => i.severity === "warning");
   return (
     <section className="validation">
       <div className="validation-title">
-        <ShieldCheck size={19} />
         <h2>Model check</h2>
-        <span className="live-dot" title="Validation runs on every change" />
-      </div>
-      <p className="validation-subtitle">
-        A second pair of eyes, as you build.
-      </p>
-      <div className="validation-counts">
-        <div className={errors.length ? "has-errors" : ""}>
-          <strong>{errors.length}</strong>
-          <span>
-            <AlertCircle size={13} /> Errors
-          </span>
-        </div>
-        <div>
-          <strong>{warnings.length}</strong>
-          <span>
-            <AlertTriangle size={13} /> Warnings
-          </span>
-        </div>
+        <span className="validation-summary">
+          {errors.length} errors · {warnings.length} warnings
+        </span>
+        {onClose && (
+          <button
+            type="button"
+            className="button secondary fold-check-button"
+            aria-label="Fold model check"
+            onClick={onClose}
+          >
+            <PanelRightClose size={15} /> Fold
+          </button>
+        )}
       </div>
       <div className="issue-scroll">
         {!issues.length ? (
           <div className="all-clear">
-            <CheckCircle2 size={32} />
-            <h3>Looking good.</h3>
-            <p>No issues found. Your diagrams agree with each other.</p>
-            <small>
-              Automated checks support review; they don’t replace design
-              judgment.
-            </small>
+            <CheckCircle2 size={28} />
+            <h3>No issues</h3>
+            <p>Class and sequence diagrams are consistent.</p>
           </div>
         ) : (
           <>
             {errors.length > 0 && (
               <div className="issue-group">
-                <h3>
-                  NEEDS YOUR ATTENTION <span>{errors.length}</span>
-                </h3>
+                <h3>Errors</h3>
                 {errors.map((i) => (
                   <IssueCard
                     key={i.id}
@@ -76,9 +65,7 @@ export default function ValidationPanel({
             )}
             {warnings.length > 0 && (
               <div className="issue-group">
-                <h3>
-                  WORTH A LOOK <span>{warnings.length}</span>
-                </h3>
+                <h3>Warnings</h3>
                 {warnings.map((i) => (
                   <IssueCard
                     key={i.id}
@@ -92,9 +79,6 @@ export default function ValidationPanel({
             )}
           </>
         )}
-      </div>
-      <div className="validation-footer">
-        <span className="live-dot" /> All 10 rule groups checked continuously
       </div>
     </section>
   );
@@ -119,22 +103,21 @@ function IssueCard({
           <AlertTriangle size={15} />
         )}
         <strong>{i.category}</strong>
-        <span>{i.severity}</span>
       </div>
       <p>{i.message}</p>
-      <button className="issue-location" onClick={() => navigate(i)}>
-        {i.diagramId ? "Sequence diagram" : "Class diagram"}
-        <ArrowUpRight size={13} />
-      </button>
-      {i.fix && !readOnly && (
-        <button className="fix-button" onClick={() => fix(i)}>
-          <Sparkles size={13} />
-          {i.fix.kind === "rename-message"
-            ? `Use ${i.fix.name}()`
-            : `Use ${i.fix.value}`}
-          <span>↵</span>
+      <div className="issue-actions">
+        <button className="issue-location" onClick={() => navigate(i)}>
+          Show on diagram
+          <ArrowUpRight size={13} />
         </button>
-      )}
+        {i.fix && !readOnly && (
+          <button className="fix-button" onClick={() => fix(i)}>
+            {i.fix.kind === "rename-message"
+              ? `Use ${i.fix.name}()`
+              : `Use ${i.fix.value}`}
+          </button>
+        )}
+      </div>
     </article>
   );
 }

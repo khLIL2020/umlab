@@ -3,8 +3,6 @@ import {
   Undo2,
   Redo2,
   Download,
-  Upload,
-  LayoutGrid,
   ChevronDown,
   Check,
   Eye,
@@ -19,7 +17,6 @@ interface Props {
   canRedo: boolean;
   undo: () => void;
   redo: () => void;
-  arrange: () => void;
   importFile: () => void;
   exportFile: (format: "json" | "png" | "svg") => void;
   storageError: string;
@@ -32,14 +29,12 @@ export default function Toolbar(p: Props) {
     <header className="toolbar">
       <div className="brand">
         <div className="brand-mark">
-          <Box size={25} />
+          <Box size={22} />
         </div>
         <span>
           UM<span className="brand-light">Lab</span>
-          <span className="brand-dot">.</span>
         </span>
       </div>
-      <div className="header-divider" />
       <div className="project-title">
         <strong>{p.name || "Untitled project"}</strong>
         <span title={p.storageError || "Saved in this browser"}>
@@ -47,7 +42,7 @@ export default function Toolbar(p: Props) {
             <span className="text-amber-700">Autosave unavailable</span>
           ) : (
             <>
-              <Check size={12} /> Saved locally
+              <Check size={12} /> Saved
             </>
           )}
         </span>
@@ -89,32 +84,34 @@ export default function Toolbar(p: Props) {
             >
               <Redo2 size={17} />
             </button>
-            <div className="header-divider" />
-            <button className="button quiet arrange" onClick={p.arrange}>
-              <LayoutGrid size={15} /> Auto-arrange
-            </button>
-            <button className="button quiet" onClick={p.importFile}>
-              <Upload size={15} />
-              <span>Import</span>
-            </button>
           </>
         )}
         <div className="export-menu">
           <button
-            className="button primary"
+            className="button secondary"
             aria-expanded={menu}
             onClick={() => setMenu(!menu)}
           >
-            <Download size={15} /> Export <ChevronDown size={13} />
+            File <ChevronDown size={13} />
           </button>
           {menu && (
             <>
               <button
                 className="menu-backdrop"
-                aria-label="Close export menu"
+                aria-label="Close file menu"
                 onClick={() => setMenu(false)}
               />
               <div className="dropdown">
+                {!p.readOnly && (
+                  <button
+                    onClick={() => {
+                      p.importFile();
+                      setMenu(false);
+                    }}
+                  >
+                    Import JSON
+                  </button>
+                )}
                 {(["json", "png", "svg"] as const).map((f) => (
                   <button
                     key={f}
@@ -123,9 +120,13 @@ export default function Toolbar(p: Props) {
                       setMenu(false);
                     }}
                   >
-                    {f === "json"
-                      ? "Project JSON"
-                      : `Diagram ${f.toUpperCase()}`}
+                    {f === "json" ? (
+                      <>
+                        <Download size={14} /> Export JSON
+                      </>
+                    ) : (
+                      `Export ${f.toUpperCase()}`
+                    )}
                   </button>
                 ))}
                 {!p.readOnly && (

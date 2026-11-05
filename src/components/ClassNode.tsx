@@ -2,7 +2,13 @@ import { Handle, Position, type NodeProps, type Node } from "@xyflow/react";
 import { Box, MessageCircle } from "lucide-react";
 import type { UMLClass } from "../validation/types";
 export type ClassFlowNode = Node<
-  { model: UMLClass; issueCount: number; comments: number },
+  {
+    model: UMLClass;
+    issueCount: number;
+    comments: number;
+    connectReady?: boolean;
+    connectFrom?: boolean;
+  },
   "umlClass"
 >;
 export default function ClassNode({
@@ -11,9 +17,57 @@ export default function ClassNode({
 }: NodeProps<ClassFlowNode>) {
   const c = data.model;
   return (
-    <div className={`class-node ${selected ? "is-selected" : ""}`}>
-      <Handle type="target" position={Position.Left} />
-      <Handle type="source" position={Position.Right} />
+    <div
+      className={`class-node ${selected ? "is-selected" : ""} ${data.connectReady ? "connect-ready" : ""} ${data.connectFrom ? "connect-from" : ""}`}
+    >
+      <Handle
+        type="source"
+        position={Position.Top}
+        id="top"
+        className="class-handle"
+      />
+      <Handle
+        type="source"
+        position={Position.Right}
+        id="right"
+        className="class-handle"
+      />
+      <Handle
+        type="source"
+        position={Position.Bottom}
+        id="bottom"
+        className="class-handle"
+      />
+      <Handle
+        type="source"
+        position={Position.Left}
+        id="left"
+        className="class-handle"
+      />
+      <Handle
+        type="target"
+        position={Position.Top}
+        id="top-t"
+        className="class-handle target-handle"
+      />
+      <Handle
+        type="target"
+        position={Position.Right}
+        id="right-t"
+        className="class-handle target-handle"
+      />
+      <Handle
+        type="target"
+        position={Position.Bottom}
+        id="bottom-t"
+        className="class-handle target-handle"
+      />
+      <Handle
+        type="target"
+        position={Position.Left}
+        id="left-t"
+        className="class-handle target-handle"
+      />
       <header>
         <Box size={16} />
         <strong>{c.name || "Unnamed class"}</strong>

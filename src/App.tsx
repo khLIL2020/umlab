@@ -4,10 +4,14 @@ import {
   GitBranch,
   Info,
   X,
-  ChevronRight,
-  LockKeyhole,
   Plus,
+  ShieldCheck,
+  AlertCircle,
+  Link2,
 } from "lucide-react";
+function LinkHint() {
+  return <Link2 size={15} />;
+}
 import type { Connection } from "@xyflow/react";
 import Toolbar from "./components/Toolbar";
 import Palette from "./components/Palette";
@@ -37,6 +41,11 @@ export default function App() {
   const [diagramId, setDiagramId] = useState("class");
   const [selected, setSelected] = useState<string | null>(null);
   const [focusToken, setFocusToken] = useState(0);
+  const [showChecks, setShowChecks] = useState(false);
+  const [connectKind, setConnectKind] = useState<RelationshipKind | null>(
+    null,
+  );
+  const [connectFrom, setConnectFrom] = useState<string | null>(null);
   const [toast, setToast] = useState("");
   const [hint, setHint] = useState(() => {
     try {
@@ -47,10 +56,47 @@ export default function App() {
   });
   const file = useRef<HTMLInputElement>(null);
   const issues = useMemo(() => validateProject(project), [project]);
+  const errorCount = issues.filter((i) => i.severity === "error").length;
+  const warningCount = issues.filter((i) => i.severity === "warning").length;
   const sequence = project.sequences.find((s) => s.id === diagramId);
   const isClass = diagramId === "class";
   const currentDiagram = isClass || sequence ? diagramId : "class";
   const notify = (text: string) => setToast(text);
+  const clearConnect = () => {
+    setConnectKind(null);
+    setConnectFrom(null);
+  };
+  const select = (id: string | null) => {
+    if (connectKind) return;
+    setSelected(id);
+  };
+  const beginConnect = (kind: RelationshipKind) => {
+    if (readOnly || project.classes.length < 2) return;
+    setSelected(null);
+    setShowChecks(false);
+    setDiagramId("class");
+    setConnectKind(kind);
+    setConnectFrom(null);
+    notify(`Click the first class, then the second (${kind}). Esc cancels.`);
+  };
+  const onClassPick = (id: string) => {
+    if (!connectKind) {
+      setSelected(id);
+      return;
+    }
+    if (!connectFrom) {
+      setConnectFrom(id);
+      notify("Now click the class to connect to.");
+      return;
+    }
+    if (connectFrom === id) {
+      notify("Pick a different class for the other end.");
+      return;
+    }
+    addRelationship(connectKind, connectFrom, id);
+    clearConnect();
+    notify("Relationship added. Edit roles and multiplicity in the side panel.");
+  };
   useEffect(() => {
     if (toast) {
       const id = setTimeout(() => setToast(""), 4500);
@@ -68,7 +114,7 @@ export default function App() {
     setSelected(null);
   };
   const focus = (id: string) => {
-    setSelected(id);
+    select(id);
     setFocusToken((n) => n + 1);
   };
   const remove = () => {
@@ -101,7 +147,11 @@ export default function App() {
       } else if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
         remove();
-      } else if (e.key === "Escape") setSelected(null);
+      } else if (e.key === "Escape") {
+        setSelected(null);
+        setShowChecks(false);
+        clearConnect();
+      }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
@@ -141,12 +191,16 @@ export default function App() {
     target?: string,
   ) => {
     if (readOnly || project.classes.length < 2) return;
+    if (!source || !target) {
+      beginConnect(kind);
+      return;
+    }
     const id = uid();
     update((p) =>
       p.relationships.push({
         id,
-        source: source ?? p.classes[0].id,
-        target: target ?? p.classes[1].id,
+        source,
+        target,
         kind,
         name: "",
         sourceRole: "",
@@ -318,12 +372,15 @@ export default function App() {
         <Toolbar
           name={project.name}
           readOnly={readOnly}
-          setReadOnly={setReadOnly}
+          setReadOnly={(v) => {
+            setReadOnly(v);
+            setSelected(null);
+            setShowChecks(false);
+          }}
           canUndo={store.canUndo}
           canRedo={store.canRedo}
           undo={store.undo}
           redo={store.redo}
-          arrange={arrange}
           importFile={() => file.current?.click()}
           exportFile={exportFile}
           storageError={store.storageError}
@@ -359,81 +416,80 @@ export default function App() {
             <Palette
               project={project}
               diagramId={currentDiagram}
-              selected={selected}
-              setDiagram={setDiagram}
-              select={focus}
               addClass={addClass}
               addSequence={addSequence}
               addRelationship={addRelationship}
               addMessage={addMessage}
               addFragment={addFragment}
               restoreLifelines={syncLifelines}
+              arrange={arrange}
             />
           )}
           <main className="main-area">
-            <div className="canvas-heading">
-              <div className="breadcrumbs">
-                <span>{project.name}</span>
-                <ChevronRight size={13} />
-                {isClass ? <Layers size={15} /> : <GitBranch size={15} />}
-                <strong>{isClass ? "Class diagram" : sequence?.name}</strong>
-              </div>
-              <span className="diagram-label">
-                {readOnly ? (
-                  <>
-                    <LockKeyhole size={12} /> READ ONLY
-                  </>
-                ) : isClass ? (
-                  "DESIGN CLASS DIAGRAM"
-                ) : (
-                  "SEQUENCE DIAGRAM"
+            <div className="nav-row">
+              <div className="canvas-tabs" role="tablist" aria-label="Diagrams">
+                <button
+                  role="tab"
+                  aria-selected={isClass}
+                  className={isClass ? "active" : ""}
+                  onClick={() => setDiagram("class")}
+                >
+                  <Layers size={14} /> Class diagram
+                </button>
+                {project.sequences.map((s) => (
+                  <button
+                    key={s.id}
+                    role="tab"
+                    aria-selected={s.id === diagramId}
+                    className={s.id === diagramId ? "active" : ""}
+                    onClick={() => setDiagram(s.id)}
+                  >
+                    <GitBranch size={14} />
+                    {s.name}
+                    {issues.some(
+                      (i) =>
+                        i.diagramId === s.id && i.severity === "error",
+                    ) && (
+                      <span
+                        className="tab-error"
+                        aria-label="Contains an error"
+                      />
+                    )}
+                  </button>
+                ))}
+                {!readOnly && (
+                  <button
+                    className="new-diagram-tab"
+                    aria-label="New sequence diagram"
+                    onClick={addSequence}
+                  >
+                    <Plus size={16} />
+                  </button>
                 )}
-              </span>
+              </div>
             </div>
-            <div className="canvas-tabs">
-              <button
-                className={isClass ? "active" : ""}
-                onClick={() => setDiagram("class")}
-              >
-                <Layers size={14} /> Class diagram
-              </button>
-              {project.sequences.map((s) => (
-                <button
-                  key={s.id}
-                  className={s.id === diagramId ? "active" : ""}
-                  onClick={() => setDiagram(s.id)}
-                >
-                  <GitBranch size={14} />
-                  {s.name}
-                  {issues.some(
-                    (i) => i.diagramId === s.id && i.severity === "error",
-                  ) && (
-                    <span
-                      className="tab-error"
-                      aria-label="Contains an error"
-                    />
-                  )}
-                </button>
-              ))}
-              {!readOnly && (
-                <button
-                  className="new-diagram-tab"
-                  aria-label="New sequence diagram"
-                  onClick={addSequence}
-                >
-                  <Plus size={16} />
-                </button>
-              )}
-            </div>
-            {hint && !readOnly && (
+            {hint && !readOnly && !connectKind && (
               <div className="onboarding">
-                <Info size={16} />
+                <Info size={15} />
                 <span>
-                  <strong>Your next great design starts here.</strong> Start
-                  with the sample project, then make it yours.
+                  Use Add on the left. Click a class to edit it. To connect two
+                  classes: Add relationship → click first class → click second.
                 </span>
                 <button onClick={dismissHint} aria-label="Dismiss onboarding">
                   <X size={15} />
+                </button>
+              </div>
+            )}
+            {connectKind && (
+              <div className="connect-banner" role="status">
+                <LinkHint />
+                <span>
+                  {connectFrom
+                    ? `Connecting ${project.classes.find((c) => c.id === connectFrom)?.name ?? "class"} → click the target class`
+                    : `Click the source class for ${connectKind}`}
+                </span>
+                <button className="button quiet" onClick={clearConnect}>
+                  Cancel
                 </button>
               </div>
             )}
@@ -446,11 +502,20 @@ export default function App() {
                     selected={selected}
                     focusToken={focusToken}
                     readOnly={readOnly}
-                    select={setSelected}
+                    connectKind={connectKind}
+                    connectFrom={connectFrom}
+                    select={select}
                     update={update}
+                    onClassPick={onClassPick}
                     connect={(c: Connection) => {
-                      if (c.source && c.target)
-                        addRelationship("association", c.source, c.target);
+                      if (c.source && c.target && c.source !== c.target) {
+                        addRelationship(
+                          connectKind ?? "association",
+                          c.source,
+                          c.target,
+                        );
+                        clearConnect();
+                      }
                     }}
                   />
                 ) : (
@@ -461,13 +526,13 @@ export default function App() {
                       selected={selected}
                       focusToken={focusToken}
                       readOnly={readOnly}
-                      select={setSelected}
+                      select={select}
                       update={update}
                     />
                   )
                 )}
               </div>
-              {selected && (
+              {selected && !connectKind && (
                 <Properties
                   key={selected}
                   project={project}
@@ -480,24 +545,57 @@ export default function App() {
                   close={() => setSelected(null)}
                 />
               )}
+              <aside
+                className={`checks-rail ${showChecks ? "open" : "folded"} ${errorCount ? "has-errors" : ""}`}
+              >
+                <button
+                  type="button"
+                  className="checks-rail-tab"
+                  aria-expanded={showChecks}
+                  aria-controls="model-check-panel"
+                  title={
+                    showChecks ? "Fold model check" : "Open model check"
+                  }
+                  onClick={() => setShowChecks((v) => !v)}
+                >
+                  {errorCount ? (
+                    <AlertCircle size={16} />
+                  ) : (
+                    <ShieldCheck size={16} />
+                  )}
+                  <span className="checks-rail-label">Model check</span>
+                  <span className="checks-badge">
+                    {errorCount || warningCount
+                      ? `${errorCount}/${warningCount}`
+                      : "ok"}
+                  </span>
+                  <span className="checks-fold-hint">
+                    {showChecks ? "Fold ›" : "‹ Open"}
+                  </span>
+                </button>
+                <div
+                  id="model-check-panel"
+                  className="checks-rail-panel"
+                  hidden={!showChecks}
+                >
+                  {showChecks && (
+                    <ValidationPanel
+                      issues={issues}
+                      readOnly={readOnly}
+                      navigate={(i) => {
+                        clearConnect();
+                        navigate(i);
+                      }}
+                      fix={apply}
+                      onClose={() => setShowChecks(false)}
+                    />
+                  )}
+                </div>
+              </aside>
             </div>
-            <footer className="canvas-footer">
-              <span>
-                <span className="status-dot" />{" "}
-                {readOnly
-                  ? "Reviewer mode · select an element to comment"
-                  : "All changes stay in this browser"}
-              </span>
-              <span>
-                {project.classes.length} classes <b>·</b>{" "}
-                {project.relationships.length} relationships <b>·</b>{" "}
-                {project.sequences.length} sequence
-                {project.sequences.length === 1 ? "" : "s"}
-              </span>
-            </footer>
             {!readOnly && (
               <details className="project-settings">
-                <summary>Project settings</summary>
+                <summary>Rename project or sequence</summary>
                 <label>
                   Project name
                   <input
@@ -538,23 +636,6 @@ export default function App() {
               </details>
             )}
           </main>
-          <aside className="right-panel">
-            <ValidationPanel
-              issues={issues}
-              readOnly={readOnly}
-              navigate={navigate}
-              fix={apply}
-            />
-            <div className="tip-card">
-              <span className="eyebrow">SMALL DETAIL. BETTER DESIGN.</span>
-              <p>
-                {readOnly
-                  ? "Good feedback explains why. Pin a comment to the element you’re reviewing."
-                  : "A sequence diagram tells a story. Every call should have a home in your class diagram."}
-              </p>
-              <span>Think in objects. Build with confidence.</span>
-            </div>
-          </aside>
         </div>
         <div className="toast-region" role="status" aria-live="polite">
           {toast && (

@@ -30,12 +30,10 @@ export default function ReviewerView({
   return (
     <aside className="reviewer-panel">
       <div className="reviewer-title">
-        <ClipboardList size={20} />
-        <h2>Review overview</h2>
+        <ClipboardList size={18} />
+        <h2>Review</h2>
       </div>
-      <p className="helper">
-        The model at a glance. Select any element to pin a comment.
-      </p>
+      <p className="helper">Select an element to pin a comment.</p>
       <div className="review-total">
         <strong>
           {issues.filter((i) => i.severity === "error").length}

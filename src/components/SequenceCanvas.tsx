@@ -414,8 +414,8 @@ export default function SequenceCanvas({
       <span className="sequence-zoom">{Math.round(view.scale * 100)}%</span>
       {!sequence.lifelines.length && (
         <div className="empty-canvas">
-          <h2>Add classes to bring this sequence to life.</h2>
-          <p>Lifelines are created from your classes automatically.</p>
+          <h2>No lifelines</h2>
+          <p>Add classes first — lifelines are created from them.</p>
         </div>
       )}
     </div>

@@ -1,172 +1,152 @@
+import { useState } from "react";
 import {
   Box,
   ArrowRight,
   Plus,
-  GitBranch,
+  ChevronDown,
+  LayoutGrid,
+  Link2,
   Layers,
-  MousePointer2,
-  BookOpen,
-  ChevronRight,
+  GitBranch,
 } from "lucide-react";
 import type { Project, RelationshipKind } from "../validation/types";
+
+const RELATIONSHIPS: { kind: RelationshipKind; label: string; symbol: string }[] =
+  [
+    { kind: "association", label: "Association", symbol: "—" },
+    { kind: "aggregation", label: "Aggregation", symbol: "◇—" },
+    { kind: "composition", label: "Composition", symbol: "◆—" },
+    { kind: "inheritance", label: "Inheritance", symbol: "—▷" },
+    { kind: "dependency", label: "Dependency", symbol: "⇢" },
+    { kind: "realization", label: "Realization", symbol: "┄▷" },
+  ];
+
 interface Props {
   project: Project;
   diagramId: string;
-  selected: string | null;
-  setDiagram: (id: string) => void;
-  select: (id: string) => void;
   addClass: () => void;
   addSequence: () => void;
   addRelationship: (kind: RelationshipKind) => void;
   addMessage: () => void;
   addFragment: (kind: "alt" | "opt") => void;
   restoreLifelines: () => void;
+  arrange: () => void;
 }
 export default function Palette(p: Props) {
   const isClass = p.diagramId === "class";
+  const [relMenu, setRelMenu] = useState(false);
+  const canRelate = p.project.classes.length >= 2;
+  const sequence = p.project.sequences.find((s) => s.id === p.diagramId);
+  const canMessage = !!sequence?.lifelines.length;
+
   return (
-    <aside className="palette">
-      <div className="palette-top">
-        <span className="eyebrow">WORKSPACE</span>
-        <h2>Library of ideas.</h2>
-        <p>A better model, one connection at a time.</p>
+    <aside className="palette" aria-label="Add to diagram">
+      <div className="palette-intro">
+        <strong>Add</strong>
+        <span>
+          {isClass
+            ? "Build the class diagram"
+            : "Build this sequence diagram"}
+        </span>
       </div>
-      <div className="palette-section">
-        <div className="section-title">
-          DIAGRAMS{" "}
-          <button aria-label="Add sequence diagram" onClick={p.addSequence}>
-            <Plus size={15} />
+
+      {isClass ? (
+        <div className="palette-actions">
+          <button className="button primary add-main" onClick={p.addClass}>
+            <Box size={16} /> Add class
           </button>
-        </div>
-        <button
-          className={`diagram-button ${isClass ? "active" : ""}`}
-          onClick={() => p.setDiagram("class")}
-        >
-          <Layers size={16} />
-          <span>Class diagram</span>
-          <span className="count">{p.project.classes.length}</span>
-        </button>
-        {p.project.sequences.map((s) => (
-          <button
-            key={s.id}
-            className={`diagram-button ${p.diagramId === s.id ? "active" : ""}`}
-            onClick={() => p.setDiagram(s.id)}
-          >
-            <GitBranch size={16} />
-            <span>{s.name}</span>
-            <ChevronRight size={13} />
-          </button>
-        ))}
-      </div>
-      <div className="palette-section">
-        <div className="section-title">
-          {isClass ? "BUILD YOUR MODEL" : "BUILD AN INTERACTION"}
-        </div>
-        {isClass ? (
-          <>
-            <button className="add-class" onClick={p.addClass}>
-              <Box size={22} />
-              <span>
-                <strong>Class</strong>
-                <small>An object in your system</small>
-              </span>
-              <Plus size={17} />
-            </button>
-            <div className="section-title mt-6">RELATIONSHIPS</div>
-            <div className="relationship-list">
-              {(
-                [
-                  "association",
-                  "aggregation",
-                  "composition",
-                  "inheritance",
-                  "dependency",
-                  "realization",
-                ] as const
-              ).map((kind, i) => (
-                <button
-                  key={kind}
-                  disabled={p.project.classes.length < 2}
-                  onClick={() => p.addRelationship(kind)}
-                >
-                  <span className="relation-symbol">
-                    {["—", "◇—", "◆—", "—▷", "⇢", "┄▷"][i]}
-                  </span>
-                  <span>{kind}</span>
-                  <Plus size={13} />
-                </button>
-              ))}
-            </div>
-            <p className="helper">
-              Add a relationship, then choose its endpoints in Properties. Or
-              connect the handles on two classes.
-            </p>
-          </>
-        ) : (
-          <>
+          <div className="export-menu palette-menu">
             <button
-              className="add-class"
-              disabled={
-                !p.project.sequences.find((s) => s.id === p.diagramId)
-                  ?.lifelines.length
+              className="button secondary add-main"
+              disabled={!canRelate}
+              aria-expanded={relMenu}
+              aria-haspopup="menu"
+              onClick={() => setRelMenu(!relMenu)}
+              title={
+                canRelate
+                  ? "Add a relationship"
+                  : "Add at least two classes first"
               }
-              onClick={p.addMessage}
             >
-              <ArrowRight size={22} />
-              <span>
-                <strong>Message</strong>
-                <small>A call between lifelines</small>
-              </span>
-              <Plus size={17} />
+              <Link2 size={16} /> Add relationship{" "}
+              <ChevronDown size={14} />
             </button>
-            <div className="relationship-list mt-4">
-              <button onClick={() => p.addFragment("alt")}>
-                <span className="fragment-symbol">alt</span>Alternative
-                <Plus size={13} />
-              </button>
-              <button onClick={() => p.addFragment("opt")}>
-                <span className="fragment-symbol">opt</span>Optional
-                <Plus size={13} />
-              </button>
-              <button onClick={p.restoreLifelines}>
-                <Plus size={15} />
-                Sync class lifelines
-              </button>
-            </div>
-            <p className="helper">
-              Drag lifelines horizontally and messages vertically. Select a
-              message to choose a method or type a call.
-            </p>
-          </>
-        )}
-      </div>
-      <div className="palette-section model-list">
-        <div className="section-title">
-          CLASSES <span>{p.project.classes.length}</span>
-        </div>
-        {p.project.classes.map((c) => (
-          <button
-            key={c.id}
-            onClick={() => {
-              p.setDiagram("class");
-              p.select(c.id);
-            }}
-            className={p.selected === c.id ? "chosen" : ""}
-          >
-            <Box size={14} />
-            {c.name || "Unnamed class"}
+            {relMenu && (
+              <>
+                <button
+                  className="menu-backdrop"
+                  aria-label="Close relationship menu"
+                  onClick={() => setRelMenu(false)}
+                />
+                <div className="dropdown tool-dropdown" role="menu">
+                  {RELATIONSHIPS.map((r) => (
+                    <button
+                      key={r.kind}
+                      role="menuitem"
+                      onClick={() => {
+                        p.addRelationship(r.kind);
+                        setRelMenu(false);
+                      }}
+                    >
+                      <span className="relation-symbol">{r.symbol}</span>
+                      {r.label}
+                    </button>
+                  ))}
+                </div>
+              </>
+            )}
+          </div>
+          <button className="button secondary add-main" onClick={p.addSequence}>
+            <GitBranch size={16} /> Add sequence diagram
           </button>
-        ))}
-      </div>
-      <div className="palette-footer">
-        <BookOpen size={17} />
-        <div>
-          <strong>Made for CS 2340</strong>
-          <small>Objects & Design · Georgia Tech</small>
         </div>
-      </div>
-      <div className="shortcut-hint">
-        <MousePointer2 size={12} /> Select an element to edit it
+      ) : (
+        <div className="palette-actions">
+          <button
+            className="button primary add-main"
+            disabled={!canMessage}
+            onClick={p.addMessage}
+            title={
+              canMessage
+                ? "Add a message"
+                : "Add classes first so lifelines exist"
+            }
+          >
+            <ArrowRight size={16} /> Add message
+          </button>
+          <button
+            className="button secondary add-main"
+            onClick={() => p.addFragment("alt")}
+          >
+            <Plus size={16} /> Add alt fragment
+          </button>
+          <button
+            className="button secondary add-main"
+            onClick={() => p.addFragment("opt")}
+          >
+            <Plus size={16} /> Add opt fragment
+          </button>
+          <button className="button quiet add-main" onClick={p.restoreLifelines}>
+            Sync class lifelines
+          </button>
+        </div>
+      )}
+
+      <p className="palette-hint">
+        {isClass
+          ? "Click a class to edit it. To connect: Add relationship, then click two classes."
+          : "Click a message or lifeline on the canvas to edit it."}
+      </p>
+
+      <div className="palette-footer-actions">
+        <button className="button quiet" onClick={p.arrange}>
+          <LayoutGrid size={15} /> Arrange
+        </button>
+        {isClass && (
+          <span className="palette-meta">
+            <Layers size={13} /> {p.project.classes.length} classes
+          </span>
+        )}
       </div>
     </aside>
   );

@@ -24,9 +24,12 @@ it("keyboard selection opens properties and arrow movement enters project histor
       selected={null}
       focusToken={0}
       readOnly={false}
+      connectKind={null}
+      connectFrom={null}
       select={select}
       update={update}
       connect={vi.fn()}
+      onClassPick={vi.fn()}
     />,
   );
   const node = container.querySelector('[data-id="member"]')!;
@@ -50,9 +53,12 @@ it("reviewer permits keyboard selection but never diagram movement", () => {
       selected={null}
       focusToken={0}
       readOnly
+      connectKind={null}
+      connectFrom={null}
       select={select}
       update={update}
       connect={vi.fn()}
+      onClassPick={vi.fn()}
     />,
   );
   const node = container.querySelector('[data-id="member"]')!;

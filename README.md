@@ -2,7 +2,7 @@
 
 A browser-only UML workbench for Georgia Tech CS-2340 students and reviewers. Build class and sequence diagrams, catch inconsistencies as you work, and review a submission with actionable comments. MIT licensed; no account, server, database, analytics, or paid hosting required.
 
-**Live site:** [https://khLIL2020.github.io/umlab/](https://khLIL2020.github.io/umlab/)
+**Live site:** [https://khlil2020.github.io/umlab/](https://khlil2020.github.io/umlab/)
 
 ## Run locally
 

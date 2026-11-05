@@ -38,5 +38,26 @@ export function relationshipRoute(a: Rect, b: Rect) {
     borderRadius: 6,
     offset: 30,
   });
-  return { x1, y1, x2, y2, path, labelX, labelY };
+  return {
+    x1,
+    y1,
+    x2,
+    y2,
+    path,
+    labelX,
+    labelY,
+    sourcePosition,
+    targetPosition,
+  };
+}
+export function handleIdFor(position: Position, end: "source" | "target") {
+  const side =
+    position === Position.Top
+      ? "top"
+      : position === Position.Right
+        ? "right"
+        : position === Position.Bottom
+          ? "bottom"
+          : "left";
+  return end === "source" ? side : `${side}-t`;
 }

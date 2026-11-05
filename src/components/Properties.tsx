@@ -540,7 +540,7 @@ export default function Properties({
                     })
                   }
                 >
-                  <option value="">Choose a class</option>
+                  <option value="">External actor / UI</option>
                   {project.classes.map((c) => (
                     <option value={c.id} key={c.id}>
                       {c.name}

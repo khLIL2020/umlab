@@ -111,6 +111,30 @@ describe("pure UML validation", () => {
       value: "*",
     });
   });
+  it("accepts numeric and ranged multiplicities like 2 and 2..4", () => {
+    const p = fixture();
+    p.relationships[0].sourceMultiplicity = "2";
+    p.relationships[0].targetMultiplicity = "2..4";
+    expect(has(p, "Multiplicity")).toEqual([]);
+  });
+  it("warns for external actor lifelines instead of treating them as deleted classes", () => {
+    const p = fixture();
+    p.sequences[0].lifelines[0].classId = "";
+    const issues = has(p, "Lifelines");
+    expect(issues).toHaveLength(1);
+    expect(issues[0].severity).toBe("warning");
+    expect(issues[0].message).toMatch(/external actor|not linked to a class/i);
+  });
+  it("offers adding a missing method when there is no typo suggestion", () => {
+    const p = fixture();
+    p.sequences[0].messages[0].name = "renewLoan";
+    const issue = has(p, "Methods")[0];
+    expect(issue.fix).toMatchObject({
+      kind: "add-method",
+      classId: "a",
+      name: "renewLoan",
+    });
+  });
   it("flags duplicate classes, identical method signatures, and member collisions", () => {
     const p = fixture();
     p.classes[1].name = "Library";

@@ -9,13 +9,16 @@ import {
   getSmoothStepPath,
   Position,
   ConnectionMode,
+  applyNodeChanges,
   type EdgeProps,
   type Edge,
   type ReactFlowInstance,
   type Connection,
+  type NodeChange,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
 import ClassNode, { type ClassFlowNode } from "./ClassNode";
+import { handleIdFor, relationshipRoute } from "../lib/routing";
 import type {
   Project,
   Issue,
@@ -185,7 +188,21 @@ export default function ClassCanvas({
   );
   const lastFocus = useRef(-1);
   const [nodes, setNodes] = useState(models);
-  useEffect(() => setNodes(models), [models]);
+  useEffect(() => {
+    setNodes((prev) =>
+      models.map((m) => {
+        const old = prev.find((n) => n.id === m.id);
+        return old
+          ? {
+              ...m,
+              measured: old.measured,
+              width: old.width,
+              height: old.height,
+            }
+          : m;
+      }),
+    );
+  }, [models]);
   useEffect(() => {
     if (
       !instance ||
@@ -206,16 +223,45 @@ export default function ClassCanvas({
         maxZoom: 1.25,
       });
   }, [focusToken, instance, selected, project.classes, project.relationships]);
-  const edges: RelEdge[] = project.relationships.map((r) => ({
-    id: r.id,
-    source: r.source,
-    target: r.target,
-    type: "relationship",
-    selected: r.id === selected,
-    data: { model: r },
-    sourcePosition: Position.Right,
-    targetPosition: Position.Left,
-  }));
+  const edges: RelEdge[] = project.relationships.map((r) => {
+    const source = nodes.find((n) => n.id === r.source);
+    const target = nodes.find((n) => n.id === r.target);
+    const sourceClass = project.classes.find((c) => c.id === r.source);
+    const targetClass = project.classes.find((c) => c.id === r.target);
+    const route =
+      sourceClass && targetClass
+        ? relationshipRoute(
+            {
+              x: sourceClass.position.x,
+              y: sourceClass.position.y,
+              width: source?.measured?.width ?? source?.width ?? 270,
+              height: source?.measured?.height ?? source?.height ?? 160,
+            },
+            {
+              x: targetClass.position.x,
+              y: targetClass.position.y,
+              width: target?.measured?.width ?? target?.width ?? 270,
+              height: target?.measured?.height ?? target?.height ?? 160,
+            },
+          )
+        : null;
+    return {
+      id: r.id,
+      source: r.source,
+      target: r.target,
+      type: "relationship" as const,
+      selected: r.id === selected,
+      data: { model: r },
+      sourceHandle: route
+        ? handleIdFor(route.sourcePosition, "source")
+        : "right",
+      targetHandle: route
+        ? handleIdFor(route.targetPosition, "target")
+        : "left-t",
+      sourcePosition: route?.sourcePosition ?? Position.Right,
+      targetPosition: route?.targetPosition ?? Position.Left,
+    };
+  });
   return (
     <div
       className="canvas-inner"
@@ -259,17 +305,8 @@ export default function ClassCanvas({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onInit={setInstance}
-        onNodesChange={(changes) =>
-          setNodes((ns) =>
-            ns.map((n) => {
-              const change = changes.find(
-                (c) => c.type === "position" && c.id === n.id,
-              );
-              return change?.type === "position" && change.position
-                ? { ...n, position: change.position }
-                : n;
-            }),
-          )
+        onNodesChange={(changes: NodeChange<ClassFlowNode>[]) =>
+          setNodes((ns) => applyNodeChanges(changes, ns))
         }
         onNodeDragStop={(_, n) => {
           if (!readOnly)

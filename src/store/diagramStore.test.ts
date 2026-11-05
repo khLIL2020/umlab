@@ -87,5 +87,19 @@ it("round-trips unassigned lifelines and large finite fragment heights from the 
     height: 100001,
   });
   expect(parseProject(JSON.stringify(p))).toEqual(p);
-  expect(validateProject(p).some((i) => i.category === "Lifelines")).toBe(true);
+  const lifelineIssues = validateProject(p).filter(
+    (i) => i.category === "Lifelines",
+  );
+  expect(lifelineIssues).toHaveLength(1);
+  expect(lifelineIssues[0].severity).toBe("warning");
+});
+it("can add a missing method from a one-click fix", () => {
+  const p = sample();
+  p.sequences[0].messages[0].name = "renewLoan";
+  const issue = validateProject(p).find((i) => i.fix?.kind === "add-method");
+  expect(issue?.fix).toMatchObject({
+    kind: "add-method",
+    name: "renewLoan",
+  });
+  expect(validateProject(applyFix(p, issue!.fix!))).toEqual([]);
 });

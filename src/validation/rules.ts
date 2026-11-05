@@ -84,7 +84,20 @@ export function methodExistence(p: Project): Issue[] {
                 name: suggestion.name,
               },
             }
-          : {}),
+          : m.name.trim()
+            ? {
+                fix: {
+                  kind: "add-method" as const,
+                  classId: c.id,
+                  name: m.name,
+                  parameters: m.arguments.map((a, i) => ({
+                    name: a.value.trim() || `arg${i + 1}`,
+                    type: a.type.trim() || "Object",
+                  })),
+                  returnType: "void",
+                },
+              }
+            : {}),
       };
     });
 }
@@ -127,6 +140,15 @@ export function signatureMismatch(p: Project): Issue[] {
     ];
   });
 }
+const MULTIPLICITY =
+  /^(\*|\d+|(\d+)\.\.(\d+|\*)|(\d+)\.\.\*)$/;
+export function isValidMultiplicity(value: string) {
+  const v = value.trim();
+  if (!MULTIPLICITY.test(v)) return false;
+  const range = /^(\d+)\.\.(\d+)$/.exec(v);
+  if (range) return Number(range[1]) <= Number(range[2]);
+  return true;
+}
 export function multiplicity(p: Project): Issue[] {
   return p.relationships
     .filter((r) =>
@@ -135,7 +157,7 @@ export function multiplicity(p: Project): Issue[] {
     .flatMap((r) =>
       (["source", "target"] as const).flatMap((end) => {
         const value = r[`${end}Multiplicity`].trim();
-        if (["1", "*", "0..1", "1..*", "0..*"].includes(value)) return [];
+        if (isValidMultiplicity(value)) return [];
         const suggestion = /^(many|n|0\.\.n)$/i.test(value)
           ? "*"
           : /^(one|1\.\.1)$/i.test(value)
@@ -147,7 +169,7 @@ export function multiplicity(p: Project): Issue[] {
               "error",
               "Multiplicity",
               r.id,
-              `${end === "source" ? "Source" : "Target"} end of ${r.name || "relationship"} ${value ? `has invalid multiplicity '${value}'` : "is missing a multiplicity"}. Use 1, *, 0..1, 1..*, or 0..*.${suggestion ? ` Use '${suggestion}' here.` : ""}`,
+              `${end === "source" ? "Source" : "Target"} end of ${r.name || "relationship"} ${value ? `has invalid multiplicity '${value}'` : "is missing a multiplicity"}. Use forms like 1, *, 0..1, 1..*, 0..*, 2, or 2..4.${suggestion ? ` Use '${suggestion}' here.` : ""}`,
               end,
             ),
             ...(suggestion
@@ -356,17 +378,33 @@ export function inheritance(p: Project): Issue[] {
 }
 export function orphanLifelines(p: Project): Issue[] {
   return p.sequences.flatMap((s) => [
-    ...s.lifelines
-      .filter((l) => !p.classes.some((c) => c.id === l.classId))
-      .map((l) => ({
-        ...issue(
-          "error",
-          "Lifelines",
-          l.id,
-          `Lifeline '${l.name}' refers to a class that no longer exists.`,
-        ),
-        diagramId: s.id,
-      })),
+    ...s.lifelines.flatMap((l) => {
+      if (!l.classId.trim()) {
+        return [
+          {
+            ...issue(
+              "warning",
+              "Lifelines",
+              l.id,
+              `Lifeline '${l.name || "unnamed"}' is not linked to a class. Use this for an external actor/UI, or choose a class.`,
+            ),
+            diagramId: s.id,
+          },
+        ];
+      }
+      if (p.classes.some((c) => c.id === l.classId)) return [];
+      return [
+        {
+          ...issue(
+            "error",
+            "Lifelines",
+            l.id,
+            `Lifeline '${l.name}' refers to a class that no longer exists.`,
+          ),
+          diagramId: s.id,
+        },
+      ];
+    }),
     ...s.messages
       .filter(
         (m) =>

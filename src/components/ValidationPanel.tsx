@@ -114,7 +114,9 @@ function IssueCard({
           <button className="fix-button" onClick={() => fix(i)}>
             {i.fix.kind === "rename-message"
               ? `Use ${i.fix.name}()`
-              : `Use ${i.fix.value}`}
+              : i.fix.kind === "add-method"
+                ? `Add ${i.fix.name}() to class`
+                : `Use ${i.fix.value}`}
           </button>
         )}
       </div>

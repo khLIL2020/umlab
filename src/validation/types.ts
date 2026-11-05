@@ -112,6 +112,13 @@ export type Fix =
       relationshipId: string;
       end: "source" | "target";
       value: string;
+    }
+  | {
+      kind: "add-method";
+      classId: string;
+      name: string;
+      parameters: Parameter[];
+      returnType: string;
     };
 export interface Issue {
   id: string;

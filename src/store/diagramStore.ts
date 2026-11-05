@@ -73,9 +73,19 @@ export function applyFix(p: Project, fix: Fix): Project {
       .find((s) => s.id === fix.diagramId)
       ?.messages.find((m) => m.id === fix.messageId);
     if (m) m.name = fix.name;
-  } else {
+  } else if (fix.kind === "multiplicity") {
     const r = next.relationships.find((r) => r.id === fix.relationshipId);
     if (r) r[`${fix.end}Multiplicity`] = fix.value;
+  } else if (fix.kind === "add-method") {
+    const c = next.classes.find((c) => c.id === fix.classId);
+    if (c)
+      c.methods.push({
+        id: uid(),
+        name: fix.name,
+        parameters: fix.parameters.map((param) => ({ ...param })),
+        returnType: fix.returnType,
+        visibility: "+",
+      });
   }
   return next;
 }
